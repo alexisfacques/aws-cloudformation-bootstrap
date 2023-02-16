@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Configure Eventbridge schema registries used by applications in this account.
+
+Parameters:
+
+  TagApplication:
+    Description: A unique, friendly name used to identify resources deployed by this stack.
+    Type: String
+    Default: events
+    AllowedPattern: ^[0-9a-zA-Z-]+$
+    ConstraintDescription: The 'Application' tag must only contain uppercase and lowercase letters or numbers. Dashes
+                           ('-') should only be used when prepending a nested CloudFormation stack tag with its
+                           parents.
+
+  TagEnvironment:
+    Description: An environment name that will be tagged to all deployed resources.
+    Type: String
+    AllowedValues:
+    - dev
+    - prod
+    ConstraintDescription: You must specify either 'dev' or 'prod'.
+
+Outputs:
+
+  LambdaTestEventSchemasRegistryArn:
+    Description: The Amazon Resource Name (ARN) of the 'lambda-testevent-schemas' event schema registry. A registry
+                 containing shared test events to invoke AWS Lambda functions from the AWS Console.
+    Value:
+      Fn::GetAtt:
+      - LambdaTestEventSchemasRegistry
+      - RegistryArn
+    Export:
+      Name:
+        Fn::Join:
+        - ":"
+        - - Ref: AWS::AccountId
+          - Ref: AWS::Region
+          - Ref: TagApplication
+          - lambda-testevent-schemas-registry-arn
+
+Resources:
+
+  LambdaTestEventSchemasRegistry:
+    Type: AWS::EventSchemas::Registry
+    Properties:
+      Description: Shared test events to invoke AWS Lambda functions from the AWS Console.
+      RegistryName: lambda-testevent-schemas
+      Tags:
+      - Key: custom:application
+        Value:
+          Ref: TagApplication
+      - Key: custom:environment
+        Value:
+          Ref: TagEnvironment
+      - Key: custom:stackName
+        Value:
+          Ref: AWS::StackName
+      - Key: custom:stackOwner
+        Value:
+          Ref: AWS::AccountId

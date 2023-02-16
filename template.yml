@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Configure Cloudformation nested applications deploying resources globally used by applications on this
+             account.
+
+Parameters:
+
+  TagApplication:
+    Description: A unique, friendly name used to identify resources deployed by this stack.
+    Type: String
+    Default: bootstrap
+    AllowedPattern: ^[0-9a-zA-Z-]+$
+    ConstraintDescription: The 'Application' tag must only contain uppercase and lowercase letters or numbers. Dashes
+                           ('-') should only be used when prepending a nested CloudFormation stack tag with its
+                           parents.
+
+  TagEnvironment:
+    Description: An environment name that will be tagged to all deployed resources.
+    Type: String
+    AllowedValues:
+    - dev
+    - prod
+    ConstraintDescription: You must specify either 'dev' or 'prod'.
+
+Resources:
+
+#######################################################################################################################
+# \/                                         Nested applications deployment                                        \/ #
+#######################################################################################################################
+
+  EventsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./events.template.yml
+      Parameters:
+        TagApplication:
+          Fn::Join:
+          - "-"
+          - - Ref: TagApplication
+            - events
+        TagEnvironment:
+          Ref: TagEnvironment
+      Tags:
+      - Key: custom:application
+        Value:
+          Ref: TagApplication
+      - Key: custom:environment
+        Value:
+          Ref: TagEnvironment
+      - Key: custom:stackName
+        Value:
+          Ref: AWS::StackName
+      - Key: custom:stackOwner
+        Value:
+          Ref: AWS::AccountId
+
+  IamStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./iam.template.yml
+      Parameters:
+        TagApplication:
+          Fn::Join:
+          - "-"
+          - - Ref: TagApplication
+            - iam
+        TagEnvironment:
+          Ref: TagEnvironment
+      Tags:
+      - Key: custom:application
+        Value:
+          Ref: TagApplication
+      - Key: custom:environment
+        Value:
+          Ref: TagEnvironment
+      - Key: custom:stackName
+        Value:
+          Ref: AWS::StackName
+      - Key: custom:stackOwner
+        Value:
+          Ref: AWS::AccountId

@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Configure IAM roles and service roles to enable use of certain AWS services on this account (e.g., AWS
+             CloudFormation StackSets).
+
+Parameters:
+
+  TagApplication:
+    Description: A unique, friendly name used to identify resources deployed by this stack.
+    Type: String
+    Default: iam
+    AllowedPattern: ^[0-9a-zA-Z-]+$
+    ConstraintDescription: The 'Application' tag must only contain uppercase and lowercase letters or numbers. Dashes
+                           ('-') should only be used when prepending a nested CloudFormation stack tag with its
+                           parents.
+
+  TagEnvironment:
+    Description: An environment name that will be tagged to all deployed resources.
+    Type: String
+    AllowedValues:
+    - dev
+    - prod
+    ConstraintDescription: You must specify either 'dev' or 'prod'.
+
+Resources:
+
+  AWSCloudFormationStackSetAdministrationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Description: A Self-managed CloudFormation stack set administration role capable of assuming the CloudFormation
+                   stack set execution role on target accounts.
+      Path: /
+      Policies:
+      - PolicyName: AssumeRole-AWSCloudFormationStackSetExecutionRole
+        PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+          - Effect: Allow
+            Action:
+            - sts:AssumeRole
+            Resource:
+            - Fn::Join:
+              - ":"
+              - - arn
+                - Ref: AWS::Partition
+                - iam
+                - ""
+                - "*"
+                - Fn::Join:
+                  - /
+                  - - role
+                    - AWSCloudFormationStackSetExecutionRole
+      RoleName: AWSCloudFormationStackSetAdministrationRole
+      Tags:
+      - Key: custom:application
+        Value:
+          Ref: TagApplication
+      - Key: custom:environment
+        Value:
+          Ref: TagEnvironment
+      - Key: custom:stackName
+        Value:
+          Ref: AWS::StackName
+      - Key: custom:stackOwner
+        Value:
+          Ref: AWS::AccountId
+
+  AWSCloudFormationStackSetExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS:
+            - Ref: AWS::AccountId
+          Action:
+          - sts:AssumeRole
+      Description: A Self-managed CloudFormation stack set execution role that can be assumed by the CloudFormation
+                   stack set administration role from selected accounts. Grants administrator access.
+      ManagedPolicyArns:
+      - Fn::Join:
+        - ":"
+        - - arn
+          - Ref: AWS::Partition
+          - iam
+          - ""
+          - aws
+          - Fn::Join:
+            - /
+            - - policy
+              - AdministratorAccess
+      Path: /
+      RoleName: AWSCloudFormationStackSetExecutionRole
+      Tags:
+      - Key: custom:application
+        Value:
+          Ref: TagApplication
+      - Key: custom:environment
+        Value:
+          Ref: TagEnvironment
+      - Key: custom:stackName
+        Value:
+          Ref: AWS::StackName
+      - Key: custom:stackOwner
+        Value:
+          Ref: AWS::AccountId
